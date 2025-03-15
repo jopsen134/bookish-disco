@@ -1,0 +1,90 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нажми пж</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-top: 50px;
+        }
+
+        .arrow {
+            font-size: 50px;
+            color: #ff0000;
+            margin-top: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+
+        button {
+            background-color: red;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 0, 0, 0.7);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        button:hover {
+            background-color: darkred;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 0, 0, 1);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #videoContainer {
+            display: none;
+            margin-top: 20px;
+        }
+
+        iframe {
+            width: 80%;
+            height: 450px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Нажми пж</h1>
+
+    <div class="arrow">&#8595;</div>
+
+    <button id="buyButton">Клянусь не вирус</button>
+
+    <div id="videoContainer">
+        <!-- Вставляем YouTube видео -->
+        <iframe src="https://www.youtube.com/embed/_KBFF8GYbwg" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+
+    <script>
+        document.getElementById("buyButton").addEventListener("click", function() {
+            document.getElementById("videoContainer").style.display = "block";
+        });
+    </script>
+</body>
+</html><script><video id="promoVideo" controls>
+    <source src="Danik.mp4" type="video/mp4">
+    Ваш браузер не поддерживает видео.
+</video></script>
