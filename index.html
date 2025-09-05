@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LifeQuest — нейтральный</title>
+<style>
+  :root{
+    /* Нейтральная тёмная тема */
+    --bg:#0f141a;
+    --bg2:#121922;
+    --card:#161e28;
+    --ink:#e7edf5;
+    --mut:#a8b3c2;
+    --line:#253140;
+    --glass:rgba(255,255,255,.06);
+
+    /* Акценты UI */
+    --acc:#8fb4ff;
+    --acc2:#7de1ff;
+
+    /* Статусы */
+    --succ:#2ad27f;   /* доходы */
+    --warn:#ff5a66;   /* траты / недоступно */
+
+    --y:#ffe06b;      /* прогресс дня */
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 800px at -10% -10%, #162130 0%, transparent 60%),
+      radial-gradient(1200px 900px at 110% -10%, #192638 0%, transparent 60%),
+      var(--bg);
+  }
+
+  /* Общая обёртка: снизу запас под фиксированное меню */
+  .wrap{max-width:980px;margin:0 auto;padding:18px 16px 140px}
+
+  /* Шапка секции */
+  header{
+    position:sticky;top:0;z-index:3;padding:12px 16px;margin:-18px -16px 14px;
+    background:linear-gradient(180deg,rgba(15,20,26,.92),rgba(15,20,26,.55));
+    border-bottom:1px solid var(--line);
+    backdrop-filter:blur(10px)
+  }
+  .date{font-weight:800;letter-spacing:.2px}
+  .mut{color:var(--mut);font-size:13px}
+
+  /* Прогресс дня */
+  .progress{margin:12px 0;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .bar{height:14px;background:#0d1218;border-radius:999px;overflow:hidden}
+  .fill{
+    height:100%;width:0%;
+    background:linear-gradient(90deg, #cfc26b, var(--y), #fff2a6);
+    transition:width .45s cubic-bezier(.2,.8,.2,1);
+    box-shadow:inset 0 0 14px rgba(255,240,140,.25)
+  }
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:8px}
+  .pill{
+    padding:6px 10px;border-radius:999px;background:rgba(143,180,255,.14);
+    border:1px solid var(--line);color:#d8e5ff;font-size:12px;font-weight:700
+  }
+
+  /* Нижняя навигация — фиксируем и центрируем содержимое */
+  nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:5;
+    background:linear-gradient(180deg,rgba(14,19,26,.1),rgba(14,19,26,.85));
+    border-top:1px solid var(--line);backdrop-filter:blur(10px)
+  }
+  nav .nav-inner{
+    max-width:980px;margin:0 auto;padding:12px 16px;
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
+  }
+  nav button{
+    padding:10px;border-radius:12px;border:1px solid var(--line);
+    background:var(--bg2);color:var(--ink);font-weight:800;cursor:pointer
+  }
+  nav button.active{
+    background:linear-gradient(92deg, var(--acc), var(--acc2));
+    color:#071017;border-color:transparent
+  }
+
+  /* Аккордеоны с задачами */
+  .cat{
+    margin:12px 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))
+  }
+  .cat-h{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer}
+  .chev{transition:transform .25s} .cat.open .chev{transform:rotate(90deg)}
+  .cat-b{display:none;padding:0 12px 12px} .cat.open .cat-b{display:block}
+
+  /* Карточка задачи */
+  .card{
+    border:1px solid var(--line);
+    border-radius:12px;margin:10px 0;overflow:hidden;background:var(--card);
+    box-shadow:0 10px 24px rgba(0,0,0,.35)
+  }
+  .head{display:flex;gap:12px;align-items:center;padding:12px 12px 8px}
+  .icon{
+    width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(180deg,#0f1722,#0b1018);border:1px solid var(--line)
+  }
+  .icon svg{width:22px;height:22px;stroke:#cfe1ff}
+  .title{font-weight:800}
+  .points{margin-left:auto;font-size:12px;color:#c7d4e7}
+  .body{padding:0 12px 12px}
+  .btn{
+    width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:12px;font-weight:900;cursor:pointer;
+    background:linear-gradient(92deg, var(--acc), var(--acc2));color:#061018;
+    box-shadow:0 8px 24px rgba(143,180,255,.25)
+  }
+  .btn[disabled]{opacity:.8;cursor:not-allowed;background:linear-gradient(92deg,#b61f2a,var(--warn));color:#ffecef;border:1px solid #7a2228}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+  .open{background:rgba(143,180,255,.14);color:#d8e5ff}
+  .done{background:rgba(42,210,127,.16);color:var(--succ);border-color:#1e4737}
+  .closed{background:rgba(255,90,102,.18);color:#ffd7da;border-color:#7a2228}
+
+  /* Микрозадачи */
+  .micro{display:flex;gap:8px;align-items:center;margin-top:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .micro input{transform:scale(1.1)}
+  .micro .hint{margin-left:auto;color:var(--mut);font-size:12px}
+
+  /* Универсальная панель */
+  .panel{
+    border:1px solid var(--line);border-radius:14px;background:var(--card);padding:14px;margin:12px 0;
+    box-shadow:0 10px 24px rgba(0,0,0,.35)
+  }
+  .panel h3{margin:0 0 10px 0}
+
+  /* --- Финансы: выравнивание и визуал --- */
+  .fin-container{ max-width:820px;margin:0 auto; }
+  .finInputs{ display:grid;gap:12px; grid-template-columns:1fr; }
+  @media (min-width:640px){ .finInputs{grid-template-columns:1fr 1fr;} }
+  .input{
+    background:#0e141c;border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px
+  }
+  .input label{font-size:12px;color:var(--mut)}
+  .input input{
+    width:100%;background:#0b1118;color:var(--ink);border:1px solid #1f2b38;border-radius:10px;
+    padding:12px;font-size:18px;font-weight:900;outline:none
+  }
+  .input input.income{color:var(--succ)}
+  .input input.expense{color:var(--warn)}
+  .hintTiny{color:var(--mut);font-size:12px;margin-top:2px}
+
+  /* Строка итога дня */
+  .rowLine{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .k{color:var(--mut)}
+  .v{font-weight:900}
+  .v.green{color:var(--succ)}
+  .v.red{color:var(--warn)}
+  .v.neutral{color:#d6e0ee}
+
+  /* Сводка карточками — аккуратная сетка */
+  .fin-cards{ display:grid;gap:12px;margin-top:6px; grid-template-columns:1fr; }
+  @media (min-width:560px){ .fin-cards{grid-template-columns:repeat(2,1fr);} }
+  @media (min-width:900px){ .fin-cards{grid-template-columns:repeat(3,1fr);} }
+
+  .fin-card{
+    border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);
+    padding:12px;display:flex;flex-direction:column;gap:10px;
+  }
+  .fin-card h4{margin:0;font-size:14px;color:#d6e0ee;font-weight:800}
+  .fin-pair{display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .fin-label{color:var(--mut);font-size:12px}
+  .fin-val{font-weight:900}
+  .fin-val.green{color:var(--succ)}
+  .fin-val.red{color:var(--warn)}
+  .fin-val.neutral{color:#d6e0ee}
+
+  /* Toast + confetti */
+  .toast{position:fixed;left:50%;top:14%;transform:translateX(-50%) scale(.96);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));border:1px solid var(--line);padding:12px 14px;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.35);opacity:0;z-index:10}
+  .toast.show{animation:pop .9s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes pop{0%{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.96)}40%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}100%{opacity:1}}
+  .confetti{pointer-events:none;position:fixed;inset:0;z-index:9}
+  .c{position:absolute;width:8px;height:14px;border-radius:2px;opacity:.9}
+
+  /* Сообщение «всё выполнено» */
+  .all-done{
+    margin-top:14px;padding:18px;border-radius:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    border:1px solid var(--line);display:none
+  }
+  .all-done h2{margin:0 0 6px 0}
+  .all-done p{margin:0;color:var(--mut)}
+
+  /* Кнопка «Сбросить задачи» */
+  .resetBtn{
+    padding:8px 12px;border-radius:10px;border:1px solid var(--line);
+    background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer
+  }
+  .resetBtn:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+  <!-- СЕГОДНЯ -->
+  <div class="wrap" id="screenToday">
+    <header>
+      <div class="date" id="todayText">—</div>
+      <div class="mut">Основная задача = <b>+1</b>, каждая отмеченная микрозадача = <b>+0.5</b> (учитываются при нажатии «Выполнено»)</div>
+      <div class="progress">
+        <div class="bar"><div class="fill" id="dayFill"></div></div>
+        <div class="row">
+          <div>Сегодня очков: <b id="dayPoints">0</b></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="pill" id="doneCount">Выполнено: 0</div>
+            <button id="resetTasks" class="resetBtn" title="Полный сброс задач (без финансов)">Сбросить задачи</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Разделы задач -->
+    <section class="cat open" id="catMorning">
+      <div class="cat-h"><span class="chev">▶</span><strong>Утренняя рутина</strong></div>
+      <div class="cat-b" id="wrapMorning"></div>
+    </section>
+
+    <section class="cat" id="catEvening">
+      <div class="cat-h"><span class="chev">▶</span><strong>Вечерняя рутина</strong></div>
+      <div class="cat-b" id="wrapEvening"></div>
+    </section>
+
+    <section class="cat" id="catHealth">
+      <div class="cat-h"><span class="chev">▶</span><strong>Здоровье</strong></div>
+      <div class="cat-b" id="wrapHealth"></div>
+    </section>
+
+    <section class="cat" id="catMind">
+      <div class="cat-h"><span class="chev">▶</span><strong>Интеллект</strong></div>
+      <div class="cat-b" id="wrapMind"></div>
+    </section>
+
+    <section class="cat" id="catAnytime">
+      <div class="cat-h"><span class="chev">▶</span><strong>В любое время</strong></div>
+      <div class="cat-b" id="wrapAnytime"></div>
+    </section>
+
+    <div class="all-done" id="allDoneBox">
+      <h2>Все задания выполнены!</h2>
+      <p>Можешь спустить пар ☕ — отдых заслужен.</p>
+    </div>
+  </div>
+
+  <!-- СТАТИСТИКА -->
+  <div class="wrap" id="screenStats" style="display:none">
+    <header>
+      <div class="date">Статистика</div>
+      <div class="mut">Характеристики за сегодня (хранятся локально).</div>
+    </header>
+
+    <div class="panel">
+      <h3>Итоги дня</h3>
+      <div class="mut" id="summary">—</div>
+    </div>
+
+    <div id="traits"></div>
+  </div>
+
+  <!-- ФИНАНСЫ -->
+  <div class="wrap" id="screenFinance" style="display:none">
+    <header>
+      <div class="date">Финансы</div>
+      <div class="mut">Редактируй <b>ежедневные</b> доходы и траты — всё остальное посчитается автоматически (неделя = последние 7 дней).</div>
+    </header>
+
+    <div class="fin-container">
+      <div class="panel">
+        <h3>Сегодня</h3>
+        <div class="finInputs">
+          <div class="input">
+            <label for="finIncome">Доход сегодня</label>
+            <input id="finIncome" class="income" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal"/>
+            <div class="hintTiny">Доход за день (можно менять в течение дня).</div>
+          </div>
+          <div class="input">
+            <label for="finExpense">Траты сегодня</label>
+            <input id="finExpense" class="expense" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal"/>
+            <div class="hintTiny">Суммарные траты за день.</div>
+          </div>
+        </div>
+
+        <div class="rowLine" style="margin-top:12px">
+          <div class="k">Итог дня</div>
+          <div id="finDailyNet" class="v neutral">0.00</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Сводка</h3>
+        <div class="fin-cards">
+          <!-- День -->
+          <div class="fin-card">
+            <h4>День</h4>
+            <div class="fin-pair"><div class="fin-label">Доход</div><div id="cardDayIn" class="fin-val green">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Траты</div><div id="cardDayOut" class="fin-val red">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Баланс</div><div id="cardDayNet" class="fin-val neutral">0.00</div></div>
+          </div>
+
+          <!-- Неделя -->
+          <div class="fin-card">
+            <h4>Неделя (7 дней)</h4>
+            <div class="fin-pair"><div class="fin-label">Доход</div><div id="finWeekIn" class="fin-val green">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Траты</div><div id="finWeekOut" class="fin-val red">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Баланс</div><div id="finWeekNet" class="fin-val neutral">0.00</div></div>
+          </div>
+
+          <!-- Месяц -->
+          <div class="fin-card">
+            <h4>Месяц</h4>
+            <div class="fin-pair"><div class="fin-label">Доход</div><div id="finMonthIn" class="fin-val green">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Траты</div><div id="finMonthOut" class="fin-val red">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Баланс</div><div id="finMonthNet" class="fin-val neutral">0.00</div></div>
+          </div>
+
+          <!-- Год -->
+          <div class="fin-card">
+            <h4>Год</h4>
+            <div class="fin-pair"><div class="fin-label">Доход</div><div id="finYearIn" class="fin-val green">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Траты</div><div id="finYearOut" class="fin-val red">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Баланс</div><div id="finYearNet" class="fin-val neutral">0.00</div></div>
+          </div>
+
+          <!-- Всё время -->
+          <div class="fin-card">
+            <h4>Всё время</h4>
+            <div class="fin-pair"><div class="fin-label">Доход</div><div id="finAllIn" class="fin-val green">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Траты</div><div id="finAllOut" class="fin-val red">0.00</div></div>
+            <div class="fin-pair"><div class="fin-label">Баланс</div><div id="finAllNet" class="fin-val neutral">0.00</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Навигация -->
+  <nav>
+    <div class="nav-inner">
+      <button id="tabToday" class="active">Сегодня</button>
+      <button id="tabStats">Статистика</button>
+      <button id="tabFinance">Финансы</button>
+    </div>
+  </nav>
+
+  <!-- системные элементы -->
+  <div class="toast" id="toast"></div>
+  <div class="confetti" id="confetti"></div>
+
+<script>
+/* ====== ДАТЫ / КЛЮЧИ ====== */
+const pad = n => String(n).padStart(2,'0');
+const todayKey = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKeyToDate = (key)=>{ const [Y,M,D]=key.split('-').map(Number); return new Date(Y, M-1, D); };
+
+/* ЗАДАЧИ */
+const T_PREFIX = 'todo_v1_';
+const T_DAY_POINTS = T_PREFIX +'points_';   // + date
+const T_DAY_DONE   = T_PREFIX +'done_';     // + date (JSON)
+const T_DAY_MICRO  = T_PREFIX +'micro_';    // + date (JSON)
+const T_DAY_SCORED = T_PREFIX +'scored_';   // + date (JSON)
+const T_DAY_GAINED = T_PREFIX +'gained_';   // + date (JSON)
+
+/* ФИНАНСЫ */
+const F_PREFIX = 'fin_daily_'; // F_PREFIX + YYYY-MM-DD -> {in: number, out: number}
+
+/* Недельный кулдаун ногтей */
+const NAILS_LAST = 'nails_last_done';
+
+const today = todayKey();
+
+/* ====== СОСТОЯНИЕ ЗАДАЧ ====== */
+let dayPoints   = parseFloat(localStorage.getItem(T_DAY_POINTS+today) || '0');
+let doneState   = JSON.parse(localStorage.getItem(T_DAY_DONE +today) || '{}');
+let microState  = JSON.parse(localStorage.getItem(T_DAY_MICRO+today) || '{}');
+let scoredState = JSON.parse(localStorage.getItem(T_DAY_SCORED+today) || '{}');
+let gainedMap   = JSON.parse(localStorage.getItem(T_DAY_GAINED+today) || '{}');
+
+/* ====== ИКОНКИ ====== */
+const icons = {
+  face:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14c1 1 3 1 4 0M15 10h.01M9 10h.01"/></svg>`,
+  razor:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="4" rx="1"/><path d="M12 7v10"/><rect x="10" y="17" width="4" height="4" rx="1"/></svg>`,
+  shower:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a8 8 0 0 1 8 8"/><path d="M8 14v6M12 14v6M16 14v6"/></svg>`,
+  dishes:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="5"/><path d="M15 7h3a3 3 0 0 1 3 3v4a3 3 0 1-3 3h-3"/></svg>`,
+  broom:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h14"/><path d="M14 3l7 7"/><path d="M9 14l9-9"/><path d="M7 16l4 4"/></svg>`,
+  laundry:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="5"/><path d="M7 7h10"/></svg>`,
+  droplet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.2 6 10a6 6 0 1 1-12 0c0-3.8 6-10 6-10z"/></svg>`,
+  dumbbell:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9v6M22 9v6M6 7v10M18 7v10"/><path d="M6 12h12"/></svg>`,
+  book:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19a2 2 0  0 1 2-2h14"/><path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/></svg>`,
+  cart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.5"/><circle cx="18" cy="21" r="1.5"/><path d="M5 5h2l2.4 10.2a2 2 0  0 0 2 1.6h6.7a2 2 0 0 0 2-1.6L22 9H8"/></svg>`,
+  sparkles:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z"/><path d="M19 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z"/></svg>`,
+  scissors:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.6 8.6L19 19"/><path d="M8.6 15.4L19 5"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`
+};
+
+/* ====== КАТЕГОРИИ ЗАДАЧ ====== */
+const CATS = {
+  morning: [
+    { id:'face_m', title:'Умыться утром', icon:'face', bigPoints:1, micros:[] },
+    { id:'shower_m', title:'Душ утром', icon:'shower', bigPoints:1, micros:[] },
+    { id:'shave', title:'Побриться', icon:'razor', bigPoints:1, micros:[] },
+  ],
+  evening: [
+    { id:'face_e', title:'Умыться вечером', icon:'face', bigPoints:1, micros:[] },
+    { id:'shower_e', title:'Душ вечером', icon:'shower', bigPoints:1, micros:[] },
+    { id:'brain_dump', title:'Разгрузить мысли перед сном', icon:'book', bigPoints:1, micros:[] },
+  ],
+  health: [
+    { id:'water', title:'Гидратация', icon:'droplet', bigPoints:1,
+      micros:[ {id:'water_morn', text:'Стакан воды утром', pts:0.5}, {id:'water_night', text:'Стакан воды перед сном', pts:0.5} ] },
+    { id:'workout', title:'Тренировка (до 12:00)', icon:'dumbbell', bigPoints:1,
+      micros:[ {id:'workout_warm', text:'Разминка', pts:0.5} ] },
+  ],
+  mind: [
+    { id:'lecture', title:'Научная лекция / подкаст', icon:'book', bigPoints:1,
+      micros:[ {id:'lecture_deep', text:'Подробнее изучить важную тему из контента', pts:0.5} ] },
+  ],
+  anytime: [
+    { id:'dishes', title:'Мытьё посуды', icon:'dishes', bigPoints:1, micros:[] },
+    { id:'wipe', title:'Протереть поверхности', icon:'sparkles', bigPoints:1, micros:[] },
+    { id:'sweep', title:'Подмести/пропылесосить', icon:'broom', bigPoints:1, micros:[] },
+    { id:'trash', title:'Вынести мусор', icon:'trash', bigPoints:1, micros:[] },
+    { id:'laundry', title:'Постирать бельё', icon:'laundry', bigPoints:1, micros:[] },
+    { id:'nails', title:'Подстричь ногти', icon:'scissors', bigPoints:1, micros:[] }, /* недельное */
+    { id:'store', title:'Сходить в магазин', icon:'cart', bigPoints:1, micros:[] }, /* микрозадания удалены */
+  ]
+};
+
+/* ====== Маппинг для характеристик (статистика) ====== */
+const TRAIT_MAP = {
+  care:     ['face_m','face_e','shave','shower_m','shower_e','nails'],
+  strength: ['workout'],
+  house:    ['dishes','wipe','sweep','trash','laundry','store'],
+  health:   ['water'],
+  mind:     ['lecture','brain_dump']
+};
+
+/* ====== DOM ====== */
+const todayText = document.getElementById('todayText');
+const dayFill = document.getElementById('dayFill');
+const dayPointsEl = document.getElementById('dayPoints');
+const doneCountEl = document.getElementById('doneCount');
+
+const wrapMorning = document.getElementById('wrapMorning');
+const wrapEvening = document.getElementById('wrapEvening');
+const wrapHealth = document.getElementById('wrapHealth');
+const wrapMind = document.getElementById('wrapMind');
+const wrapAnytime = document.getElementById('wrapAnytime');
+
+const toast = document.getElementById('toast');
+const confettiWrap = document.getElementById('confetti');
+const allDoneBox = document.getElementById('allDoneBox');
+
+const screenToday   = document.getElementById('screenToday');
+const screenStats   = document.getElementById('screenStats');
+const screenFinance = document.getElementById('screenFinance');
+const tabToday   = document.getElementById('tabToday');
+const tabStats   = document.getElementById('tabStats');
+const tabFinance = document.getElementById('tabFinance');
+
+const summaryEl = document.getElementById('summary');
+const traitsBox = document.getElementById('traits');
+
+/* Финансы DOM */
+const finIncome  = document.getElementById('finIncome');
+const finExpense = document.getElementById('finExpense');
+const finDailyNet= document.getElementById('finDailyNet');
+
+const cardDayIn  = document.getElementById('cardDayIn');
+const cardDayOut = document.getElementById('cardDayOut');
+const cardDayNet = document.getElementById('cardDayNet');
+
+const finWeekIn  = document.getElementById('finWeekIn');
+const finWeekOut = document.getElementById('finWeekOut');
+const finWeekNet = document.getElementById('finWeekNet');
+
+const finMonthIn = document.getElementById('finMonthIn');
+const finMonthOut= document.getElementById('finMonthOut');
+const finMonthNet= document.getElementById('finMonthNet');
+
+const finYearIn  = document.getElementById('finYearIn');
+const finYearOut = document.getElementById('finYearOut');
+const finYearNet = document.getElementById('finYearNet');
+
+const finAllIn   = document.getElementById('finAllIn');
+const finAllOut  = document.getElementById('finAllOut');
+const finAllNet  = document.getElementById('finAllNet');
+
+/* ====== УТИЛИТЫ / ДАТЫ ====== */
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1700);}
+function confetti(n=50){ const colors=['#8fb4ff','#7de1ff','#2ad27f','#ff5a66','#cfe1ff']; const W=innerWidth,H=innerHeight;
+  for(let i=0;i<n;i++){ const p=document.createElement('div'); p.className='c'; p.style.background=colors[(Math.random()*colors.length)|0]; p.style.left=(Math.random()*W)+'px'; p.style.top='-16px'; confettiWrap.appendChild(p);
+    const dx=(Math.random()-.5)*140, rot=(Math.random()*720-360), dur=900+Math.random()*1200;
+    p.animate([{transform:'translate(0,-16px) rotate(0deg)',opacity:1},{transform:`translate(${dx}px, ${H+30}px) rotate(${rot}deg)`,opacity:.2}],{duration:dur,easing:'cubic-bezier(.2,.7,.2,1)'}).finished.finally(()=>p.remove());}}
+function vibrateOk(){ if(navigator.vibrate) navigator.vibrate([20,30,20]); }
+const currency = n => Number(n||0).toFixed(2);
+
+function daysBetween(key1, key2){
+  const d1 = parseKeyToDate(key1); const d2 = parseKeyToDate(key2);
+  const diff = Math.floor((d2 - d1) / (24*60*60*1000));
+  return diff;
+}
+
+/* Недельная доступность «ногтей» */
+function isNailsAvailable(){
+  const last = localStorage.getItem(NAILS_LAST);
+  if(!last) return true;
+  return daysBetween(last, today) >= 7;
+}
+
+/* ====== Рендер задач ====== */
+function iconEl(name){ const div=document.createElement('div'); div.className='icon'; div.innerHTML=icons[name]||icons.book; return div; }
+function isWorkoutClosed(){ return new Date().getHours()>=12; }
+function badgeFor(task){
+  if(doneState[task.id]) return `<span class="badge done">Выполнено</span>`;
+  if(task.id==='workout' && isWorkoutClosed()) return `<span class="badge closed">После 12:00 не засчитывается</span>`;
+  return `<span class="badge open">Готово к выполнению</span>`;
+}
+function microKey(taskId, mId){ return taskId+'__'+mId; }
+
+function buildTaskCard(task){
+  const card=document.createElement('div'); card.className='card';
+  const head=document.createElement('div'); head.className='head';
+  head.appendChild(iconEl(task.icon));
+
+  const tbox=document.createElement('div');
+  const ttl=document.createElement('div'); ttl.className='title'; ttl.textContent=task.title;
+  const sub=document.createElement('div'); sub.className='mut'; sub.textContent = (task.id==='workout' ? 'Доступно до 12:00' : (task.id==='nails'?'Раз в неделю':'Выполняй когда удобно'));
+  tbox.appendChild(ttl); tbox.appendChild(sub);
+  const pts=document.createElement('div'); pts.className='points'; pts.textContent='+1';
+  head.appendChild(tbox); head.appendChild(pts);
+
+  const body=document.createElement('div'); body.className='body';
+  const badgeWrap=document.createElement('div'); badgeWrap.innerHTML = badgeFor(task);
+  body.appendChild(badgeWrap);
+
+  (task.micros||[]).forEach(m=>{
+    const key = microKey(task.id, m.id);
+    const wrap=document.createElement('label'); wrap.className='micro';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!microState[key];
+    cb.disabled = !!doneState[task.id] || (task.id==='workout' && isWorkoutClosed());
+    const txt=document.createTextNode(' '+m.text);
+    const hint=document.createElement('span'); hint.className='hint'; hint.textContent = '+0.5 (учтётся при «Выполнено»)';
+    wrap.appendChild(cb); wrap.appendChild(txt); wrap.appendChild(hint); body.appendChild(wrap);
+    cb.addEventListener('change',()=>{ microState[key]=cb.checked; persistTasks(); });
+  });
+
+  const btn=document.createElement('button'); btn.className='btn'; btn.textContent='Выполнено';
+  btn.disabled = !!doneState[task.id] || (task.id==='workout' && isWorkoutClosed());
+  btn.addEventListener('click',()=>completeTask(task, body, card));
+  body.appendChild(btn);
+
+  card.appendChild(head); card.appendChild(body);
+  return card;
+}
+
+function completeTask(task, bodyEl, cardEl){
+  if(doneState[task.id]) return;
+  if(task.id==='workout' && isWorkoutClosed()){ showToast('Тренировка засчитывается только до 12:00'); return; }
+
+  let gained = 0;
+  if(!scoredState[task.id]){
+    gained = task.bigPoints || 1;
+    (task.micros||[]).forEach(m=>{
+      const key=microKey(task.id,m.id);
+      if(microState[key]) gained += 0.5;
+    });
+    scoredState[task.id] = true;
+    gainedMap[task.id] = gained;
+  }
+  doneState[task.id] = true;
+  if(task.id==='nails'){ localStorage.setItem(NAILS_LAST, today); }
+  dayPoints += gained;
+  persistTasks();
+
+  bodyEl.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.disabled=true);
+  if(gained>0){ showToast(`+${gained.toFixed(1)} оч.`); confetti(); vibrateOk(); }
+
+  if(cardEl && cardEl.parentNode){ cardEl.parentNode.removeChild(cardEl); }
+  refreshHeaderOnly();
+  afterRenderCheckAllDone();
+}
+
+/* Возвращает список задач категории с учётом доступности */
+function tasksOf(catKey){
+  const base = CATS[catKey] || [];
+  return base.filter(t => !(t.id==='nails' && !isNailsAvailable()));
+}
+
+function renderCategory(container, list, catKey){
+  container.innerHTML='';
+  const usable = catKey ? tasksOf(catKey) : list;
+  usable.forEach(t => { if(doneState[t.id]) return; container.appendChild(buildTaskCard(t)); });
+}
+function refreshHeaderOnly(){
+  dayPointsEl.textContent = dayPoints.toFixed(1);
+  const visualRef = 10; dayFill.style.width = Math.min(100, Math.round(dayPoints/visualRef*100)) + '%';
+  doneCountEl.textContent = 'Выполнено: ' + countDone() + ' из ' + totalTasks();
+}
+function renderAllTasks(){
+  const now=new Date(); const d=new Intl.DateTimeFormat('ru-RU',{weekday:'long',day:'2-digit',month:'long'}).format(now);
+  const cap = d.charAt(0).toUpperCase()+d.slice(1);
+  todayText.textContent = cap;
+
+  renderCategory(wrapMorning, CATS.morning, 'morning');
+  renderCategory(wrapEvening, CATS.evening, 'evening');
+  renderCategory(wrapHealth,  CATS.health,  'health');
+  renderCategory(wrapMind,    CATS.mind,    'mind');
+  renderCategory(wrapAnytime, CATS.anytime, 'anytime');
+
+  refreshHeaderOnly();
+  afterRenderCheckAllDone();
+}
+
+function totalTasks(){
+  return ['morning','evening','health','mind','anytime']
+    .flatMap(k => tasksOf(k)).length;
+}
+function countDone(){
+  return ['morning','evening','health','mind','anytime']
+    .flatMap(k => tasksOf(k).map(t=>!!doneState[t.id]))
+    .filter(Boolean).length;
+}
+function closeAllSections(){ document.querySelectorAll('.cat').forEach(sec=>sec.style.display='none'); }
+function openAllSections(){ document.querySelectorAll('.cat').forEach(sec=>sec.style.display=''); }
+function afterRenderCheckAllDone(){
+  const allDone = countDone() >= totalTasks();
+  if(allDone){ closeAllSections(); allDoneBox.style.display = 'block'; }
+  else{ allDoneBox.style.display = 'none'; openAllSections(); }
+}
+
+/* ====== ПЕРСИСТЕНТНОСТЬ ЗАДАЧ ====== */
+function persistTasks(){
+  localStorage.setItem(T_DAY_POINTS+today, String(dayPoints));
+  localStorage.setItem(T_DAY_DONE  +today, JSON.stringify(doneState));
+  localStorage.setItem(T_DAY_MICRO +today, JSON.stringify(microState));
+  localStorage.setItem(T_DAY_SCORED+today, JSON.stringify(scoredState));
+  localStorage.setItem(T_DAY_GAINED+today, JSON.stringify(gainedMap));
+}
+
+/* ====== ТАБЫ ====== */
+function setTab(btn){
+  [tabToday,tabStats,tabFinance].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  screenToday.style.display   = btn===tabToday   ? 'block':'none';
+  screenStats.style.display   = btn===tabStats   ? 'block':'none';
+  screenFinance.style.display = btn===tabFinance ? 'block':'none';
+  if(btn===tabStats) renderStats();
+  if(btn===tabFinance) renderFinance();
+}
+tabToday.addEventListener('click', ()=>setTab(tabToday));
+tabStats.addEventListener('click', ()=>setTab(tabStats));
+tabFinance.addEventListener('click', ()=>setTab(tabFinance));
+
+/* ====== СТАТИСТИКА ====== */
+function renderStats(){
+  summaryEl.innerHTML = `Сегодня: <b>${dayPoints.toFixed(1)}</b> очков. Выполнено задач: <b>${countDone()}</b> из <b>${totalTasks()}</b>.`;
+
+  const sums = {care:0,strength:0,house:0,health:0,mind:0};
+  for(const [taskId, pts] of Object.entries(gainedMap)){
+    for(const [trait, list] of Object.entries(TRAIT_MAP)){
+      if(list.includes(taskId)){ sums[trait] += pts; break; }
+    }
+  }
+  const labels = { care:'Ухоженность', strength:'Сила', house:'Хозяйственность', health:'Здоровье', mind:'Ум' };
+  const max = Math.max(10, ...Object.values(sums));
+
+  traitsBox.innerHTML='';
+  Object.entries(sums).forEach(([k,v])=>{
+    const panel=document.createElement('div'); panel.className='panel';
+    const top=document.createElement('div'); top.className='rowLine';
+    const left=document.createElement('div'); left.textContent=labels[k];
+    const right=document.createElement('div'); right.className='v'; right.textContent=v.toFixed(1)+' оч.';
+    top.appendChild(left); top.appendChild(right);
+    const barWrap=document.createElement('div'); barWrap.className='bar'; barWrap.style.marginTop='8px';
+    const fill=document.createElement('div'); fill.className='fill'; fill.style.width='0%';
+    barWrap.appendChild(fill); panel.appendChild(top); panel.appendChild(barWrap);
+    traitsBox.appendChild(panel);
+    requestAnimationFrame(()=>{ fill.style.width = Math.min(100, Math.round(v/max*100)) + '%'; });
+  });
+}
+
+/* ====== ФИНАНСЫ ====== */
+function getDailyFinance(dateKey){
+  const raw = localStorage.getItem(F_PREFIX+dateKey);
+  if(!raw) return {in:0,out:0};
+  try{ const obj = JSON.parse(raw); return {in:+obj.in||0, out:+obj.out||0}; }
+  catch{ return {in:0,out:0}; }
+}
+function setDailyFinance(dateKey, values){
+  localStorage.setItem(F_PREFIX+dateKey, JSON.stringify({in:+values.in||0, out:+values.out||0}));
+}
+
+/* Подсчёт сумм по предикату */
+function scanFinance(predicate){
+  let sumIn=0, sumOut=0;
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(!k || !k.startsWith(F_PREFIX)) continue;
+    const dateKey = k.slice(F_PREFIX.length); // YYYY-MM-DD
+    const v = getDailyFinance(dateKey);
+    if(predicate(dateKey,v)){ sumIn += v.in; sumOut += v.out; }
+  }
+  return {sumIn, sumOut, net: sumIn - sumOut};
+}
+
+function renderFinance(){
+  // Сегодня
+  const todayVals = getDailyFinance(today);
+  finIncome.value  = todayVals.in ? todayVals.in : '';
+  finExpense.value = todayVals.out? todayVals.out: '';
+  const dailyNet = todayVals.in - todayVals.out;
+  finDailyNet.textContent = currency(dailyNet);
+  finDailyNet.className = 'v ' + (dailyNet>0?'green':dailyNet<0?'red':'neutral');
+
+  // Карточка "День"
+  cardDayIn.textContent  = currency(todayVals.in);
+  cardDayOut.textContent = currency(todayVals.out);
+  cardDayNet.textContent = currency(dailyNet);
+  cardDayNet.className = 'fin-val ' + (dailyNet>0?'green':dailyNet<0?'red':'neutral');
+
+  // Неделя (последние 7 дней)
+  const now = new Date();
+  const ms7 = 7*24*60*60*1000;
+  const week = scanFinance((dk)=>{
+    const dt = parseKeyToDate(dk);
+    return (now - dt) < ms7 && (now - dt) >= 0;
+  });
+  finWeekIn.textContent  = currency(week.sumIn);
+  finWeekOut.textContent = currency(week.sumOut);
+  finWeekNet.textContent = currency(week.net);
+  finWeekNet.className = 'fin-val ' + (week.net>0?'green':week.net<0?'red':'neutral');
+
+  // Месяц (текущий календарный)
+  const ym = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  const month = scanFinance((dk)=>dk.startsWith(ym));
+  finMonthIn.textContent  = currency(month.sumIn);
+  finMonthOut.textContent = currency(month.sumOut);
+  finMonthNet.textContent = currency(month.net);
+  finMonthNet.className = 'fin-val ' + (month.net>0?'green':month.net<0?'red':'neutral');
+
+  // Год (текущий календарный)
+  const y  = `${now.getFullYear()}-`;
+  const year = scanFinance((dk)=>dk.startsWith(y));
+  finYearIn.textContent  = currency(year.sumIn);
+  finYearOut.textContent = currency(year.sumOut);
+  finYearNet.textContent = currency(year.net);
+  finYearNet.className = 'fin-val ' + (year.net>0?'green':year.net<0?'red':'neutral');
+
+  // Всё время
+  const all = scanFinance(()=>true);
+  finAllIn.textContent  = currency(all.sumIn);
+  finAllOut.textContent = currency(all.sumOut);
+  finAllNet.textContent = currency(all.net);
+  finAllNet.className = 'fin-val ' + (all.net>0?'green':all.net<0?'red':'neutral');
+}
+
+/* Слушатели ввода (меняем ТОЛЬКО ежедневные значения) */
+['input','change'].forEach(ev=>{
+  finIncome.addEventListener(ev, ()=>{
+    setDailyFinance(today, {in:+finIncome.value||0, out:+(finExpense.value||0)});
+    renderFinance();
+  });
+  finExpense.addEventListener(ev, ()=>{
+    setDailyFinance(today, {in:+(finIncome.value||0), out:+finExpense.value||0});
+    renderFinance();
+  });
+});
+
+/* ====== СБРОС ТОЛЬКО ЗАДАЧ ====== */
+document.getElementById('resetTasks')?.addEventListener('click', ()=>{
+  if(!confirm('Полный сброс задач?\nОчки, выполненные задачи и чекбоксы будут очищены. Финансы НЕ трогаем.')) return;
+
+  // Удаляем все ключи задач
+  const toDelete = [];
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(T_PREFIX)) toDelete.push(k);
+  }
+  toDelete.forEach(k=>localStorage.removeItem(k));
+
+  // Обнуляем состояние задач
+  dayPoints = 0; doneState={}; microState={}; scoredState={}; gainedMap={};
+  persistTasks();
+  renderAllTasks();
+  showToast('Сброс задач выполнен');
+});
+
+/* ====== ИНИТ ====== */
+(function init(){
+  renderAllTasks();
+  renderFinance();
+
+  // Аккордеоны
+  document.querySelectorAll('.cat').forEach(cat=>{
+    cat.querySelector('.cat-h')?.addEventListener('click', ()=>cat.classList.toggle('open'));
+  });
+
+  // авто-обновление (например, после 12:00 для тренировки или когда пройдёт неделя для ногтей)
+  setInterval(()=>{ renderAllTasks(); }, 60*1000);
+})();
+</script>
+</body>
+    </html>
